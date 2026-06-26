@@ -1,4 +1,4 @@
-from populacao import Populacao
+from .populacao import Populacao
 
 
 class Sonda:

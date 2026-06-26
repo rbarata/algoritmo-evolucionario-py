@@ -1,5 +1,5 @@
 import random
-from individuo import Individuo
+from .individuo import Individuo
 
 
 class Populacao:

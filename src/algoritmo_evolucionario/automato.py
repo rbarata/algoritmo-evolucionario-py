@@ -1,4 +1,4 @@
-from sonda import Sonda
+from .sonda import Sonda
 
 
 def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):

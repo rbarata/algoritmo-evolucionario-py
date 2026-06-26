@@ -1,7 +1,7 @@
-from ponto import Ponto
-from quadrilatero import Quadrilatero
-from tdma import calcular_tdma
-from util import print_title, max_val, min_val
+from .ponto import Ponto
+from .quadrilatero import Quadrilatero
+from .tdma import calcular_tdma
+from .util import print_title, max_val, min_val
 
 
 def calcular_KK(n, E, debug=0):

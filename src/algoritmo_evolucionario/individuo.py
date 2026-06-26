@@ -1,4 +1,4 @@
-from cromossoma import Cromossoma
+from .cromossoma import Cromossoma
 
 
 class Individuo:

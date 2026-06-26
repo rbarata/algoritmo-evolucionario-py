@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "algoritmo-evolucionario"
+version = "0.1.0"
+description = "Algoritmo evolutivo para optimização de malhas 2D"
+requires-python = ">=3.8"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+algoritmo-evolucionario = "algoritmo_evolucionario.app:main"

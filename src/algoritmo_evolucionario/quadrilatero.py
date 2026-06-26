@@ -1,4 +1,4 @@
-from ponto import Ponto
+from .ponto import Ponto
 
 
 class Quadrilatero:
