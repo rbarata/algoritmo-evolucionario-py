@@ -1,21 +1,34 @@
+import os
+from concurrent.futures import ProcessPoolExecutor
+from itertools import repeat
+
 from .populacao import Populacao
+
+# Use at most 8 workers; fall back to serial if only 1 CPU.
+_N_WORKERS = min(os.cpu_count() or 1, 8)
 
 
 class Sonda:
     def __init__(self, taxa_de_mutacao, a_eliminar, idade_maxima,
                  dimensao, modelo, f_avalia, f_reporta, parm, debug=0):
         self.taxa_de_mutacao = taxa_de_mutacao
-        self.a_eliminar = a_eliminar
-        self.idade_maxima = idade_maxima
-        self.f_avalia = f_avalia
-        self.f_reporta = f_reporta
-        self.parm = parm
+        self.a_eliminar      = a_eliminar
+        self.idade_maxima    = idade_maxima
+        self.f_avalia        = f_avalia
+        self.f_reporta       = f_reporta
+        self.parm            = parm
+
+        self._executor = ProcessPoolExecutor(max_workers=_N_WORKERS) if _N_WORKERS > 1 else None
 
         self.populacao = Populacao(dimensao, modelo, debug - 1)
         for n in range(dimensao):
             if debug > 0:
                 print(f"#A mutar - passagem {n}")
             self.populacao.diverge(0.5, debug - 1)
+
+    def __del__(self):
+        if getattr(self, '_executor', None):
+            self._executor.shutdown(wait=False)
 
     def print_sonda(self, tab=0):
         print("#" + "\t" * tab + "Sonda:")
@@ -32,25 +45,31 @@ class Sonda:
         self.populacao.selecciona(self.a_eliminar, debug - 1)
 
     def calcula_aptidao(self, avalia_fn, debug=0):
-        pop = self.populacao
+        pop  = self.populacao
         parm = self.parm
-        for n in range(pop.dimensao):
-            pop.individuos[n].aptidao = avalia_fn(
-                pop.individuos[n].cromossoma.valor(), parm, debug - 1
-            )
+        dim  = pop.dimensao
+        chromosomes = [pop.individuos[n].cromossoma.valor() for n in range(dim)]
+
+        if self._executor is not None:
+            aptidoes = list(self._executor.map(
+                avalia_fn, chromosomes, repeat(parm), repeat(0),
+            ))
+        else:
+            aptidoes = [avalia_fn(c, parm, 0) for c in chromosomes]
+
         max_apt, nmax = 0.0, -1
         min_apt, nmin = 1e10, -1
-        for n in range(pop.dimensao):
-            apt = pop.individuos[n].aptidao
+        for n, apt in enumerate(aptidoes):
+            pop.individuos[n].aptidao = apt
             if apt < min_apt:
                 min_apt, nmin = apt, n
             if apt > max_apt:
                 max_apt, nmax = apt, n
         pop.campiao = nmax
-        pop.besta = nmin
+        pop.besta   = nmin
 
     def reporta(self, iteracao, debug=0):
-        pop = self.populacao
+        pop     = self.populacao
         campiao = pop.campiao
         print("#***************************************")
         print(f"#iteração {iteracao}")

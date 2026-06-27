@@ -7,6 +7,7 @@ name = "algoritmo-evolucionario"
 version = "0.1.0"
 description = "Algoritmo evolutivo para optimização de malhas 2D"
 requires-python = ">=3.8"
+dependencies = ["numpy>=1.21"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

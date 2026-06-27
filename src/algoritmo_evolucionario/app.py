@@ -1,41 +1,32 @@
 from datetime import datetime
 
+import numpy as np
+
 from .automato import automato
 from .malha import calcular_KK, calcular_XY, calcular_soma
-from .matriz import mat2vec, vec2mat
 from .util import print_title
 
 
-def _make_boundary(n):
-    return [[None] * (n + 1) for _ in range(n + 1)]
-
-
 def codifica(n, Kx, Ky, debug=0):
-    vec_x = mat2vec(n + 1, Kx, debug - 1)
-    vec_y = mat2vec(n + 1, Ky, debug - 1)
-    codificado = vec_x + vec_y
-    if debug > 0:
-        print(f"#Codificado:{codificado}")
-    return codificado
+    Kx_np = np.asarray(Kx)
+    Ky_np = np.asarray(Ky)
+    return list(np.concatenate([Kx_np.ravel(), Ky_np.ravel()]))
 
 
 def descodifica(n, codificado, debug=0):
-    if debug > 0:
-        print(f"#Descodifica:descodificado={codificado}")
     size = (n + 1) ** 2
-    Kx = vec2mat(n + 1, codificado[:size], debug - 1)
-    Ky = vec2mat(n + 1, codificado[size:2 * size], debug - 1)
+    arr  = np.asarray(codificado)
+    Kx   = arr[:size].reshape(n + 1, n + 1)
+    Ky   = arr[size:2 * size].reshape(n + 1, n + 1)
     return Kx, Ky
 
 
 def avalia(codificado, parm, debug=0):
-    n = parm['n']
-    E = parm['E']
-    Kx, Ky = descodifica(n, codificado, debug - 1)
-    Vx = _make_boundary(n)
-    Vy = _make_boundary(n)
-    X, Y = calcular_XY(n, Kx, Ky, Vx, Vy, debug - 1)
-    desvio = calcular_soma(n, X, Y, E, debug - 1)
+    n       = parm['n']
+    E       = parm['E']
+    Kx, Ky  = descodifica(n, codificado)
+    X, Y    = calcular_XY(n, Kx, Ky)
+    desvio  = calcular_soma(n, X, Y, E)
     aptidao = 1.0 / (1.0 + desvio)
     if debug > 0:
         print(f"#aptidao=1/(1+{desvio})={aptidao}")
@@ -43,18 +34,16 @@ def avalia(codificado, parm, debug=0):
 
 
 def reporta(codificado, parm, debug=0):
-    n = parm['n']
-    Kx, Ky = descodifica(n, codificado, debug - 1)
-    Vx = _make_boundary(n)
-    Vy = _make_boundary(n)
-    X, Y = calcular_XY(n, Kx, Ky, Vx, Vy, debug - 1)
+    n      = parm['n']
+    Kx, Ky = descodifica(n, codificado)
+    X, Y   = calcular_XY(n, Kx, Ky)
     for i in range(n):
         for j in range(n):
-            print(f"{X[i][j]} {Y[i][j]}")
-            print(f"{X[i+1][j]} {Y[i+1][j]}")
-            print(f"{X[i+1][j+1]} {Y[i+1][j+1]}")
-            print(f"{X[i][j+1]} {Y[i][j+1]}")
-            print(f"{X[i][j]} {Y[i][j]}")
+            print(f"{X[i, j]} {Y[i, j]}")
+            print(f"{X[i+1, j]} {Y[i+1, j]}")
+            print(f"{X[i+1, j+1]} {Y[i+1, j+1]}")
+            print(f"{X[i, j+1]} {Y[i, j+1]}")
+            print(f"{X[i, j]} {Y[i, j]}")
         print()
 
 

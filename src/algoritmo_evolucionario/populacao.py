@@ -1,3 +1,4 @@
+import heapq
 import random
 from .individuo import Individuo
 
@@ -45,17 +46,10 @@ class Populacao:
                 self.individuos[n].muta_controlo(self.comprimento, debug - 1)
 
     def selecciona(self, a_eliminar, debug=0):
-        for _ in range(a_eliminar):
-            min_aptidao = 10000.0
-            nmin = -1
-            for n in range(self.dimensao):
-                if self.individuos[n].estado == 'V':
-                    apt = self.individuos[n].aptidao
-                    if apt < min_aptidao:
-                        min_aptidao = apt
-                        nmin = n
-            if nmin >= 0:
-                self.individuos[nmin].estado = 'M'
+        vivos = [n for n in range(self.dimensao) if self.individuos[n].estado == 'V']
+        piores = heapq.nsmallest(a_eliminar, vivos, key=lambda n: self.individuos[n].aptidao)
+        for n in piores:
+            self.individuos[n].estado = 'M'
 
     def _escolher_vivo(self):
         while True:
