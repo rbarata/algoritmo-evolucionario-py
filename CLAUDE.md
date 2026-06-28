@@ -14,7 +14,7 @@ Given an `n×n` grid of material properties `E[i][j]`, the algorithm finds node 
 
 **Mesh solve:** given `Kx` and `Ky`, node positions are found by solving a diffusion PDE with Dirichlet boundary conditions (left/right edges fixed in X; top/bottom fixed in Y). The stencil is assembled as a sparse CSR matrix and solved exactly with `scipy.sparse.linalg.spsolve` (SuperLU). One solve for X, one for Y.
 
-**EA loop (1000 generations, population 50):**
+**EA loop (configurable; defaults: 1000 generations, population 50):**
 1. Dead individuals replaced via single-point crossover of two live parents.
 2. Chromosome mutation: random gene ± step-size value (rate 0.2).
 3. Step-size mutation: random step-size ×2 or ÷2 (rate 0.04) — self-adaptive ES.
@@ -29,8 +29,12 @@ Given an `n×n` grid of material properties `E[i][j]`, the algorithm finds node 
 main.py                                      thin entry point — just calls app.main()
 pyproject.toml                               build config; deps: numpy>=1.21, scipy>=1.7
 src/algoritmo_evolucionario/
-    app.py          codifica / descodifica / avalia / reporta / main()
+    app.py          codifica / descodifica / avalia / reporta / main() (argparse: --config, --list-configs)
     automato.py     automato(pop, model, avalia_fn, reporta_fn, iters, parm, debug)
+    config.py       load(name) — dynamic config loader; exposes all uppercase constants
+    configs/
+        default.py  standard scenario (n=10, pop=50, gen=1000)
+        small.py    quick smoke-test (n=5, pop=20, gen=100)
     sonda.py        Sonda — wraps Populacao; drives gera/avalia/reporta; parallel eval
     populacao.py    Populacao — holds dict of Individuo; refresh/diverge/selecciona
     individuo.py    Individuo — cromossoma + aptidao + estado ('V'/'M'/'N') + idade
@@ -133,7 +137,7 @@ Individual `estado` values:
 
 ## `Sonda` — parallel evaluation
 
-`calcula_aptidao` collects all chromosomes, then evaluates them via `ProcessPoolExecutor.map` (up to 8 workers, falls back to serial on single-CPU machines). The executor is created once at `Sonda.__init__` and shut down via `__del__`.
+`calcula_aptidao` collects all chromosomes, then evaluates them via `ProcessPoolExecutor.map` (up to `config.MAX_WORKERS` workers, falls back to serial on single-CPU machines). The executor is created once at `Sonda.__init__` (worker count read from config at that point) and shut down via `__del__`.
 
 ---
 
@@ -143,13 +147,40 @@ Individual `estado` values:
 # setup (first time)
 python3 -m venv .venv && source .venv/bin/activate && pip install -e .
 
-# run
+# run with the default config
 python main.py
 python -m algoritmo_evolucionario
 algoritmo-evolucionario          # CLI entry point from pyproject.toml
+
+# run with a named config
+algoritmo-evolucionario --config small
+
+# list available configs
+algoritmo-evolucionario --list-configs
 ```
 
-Default: `n=10`, population 50, 1000 generations. Output goes to stdout: per-iteration champion stats (prefixed `#`), then final mesh coordinates in gnuplot format (5 points per cell, blank line between rows).
+Output goes to stdout: per-iteration champion stats (prefixed `#`), then final mesh coordinates in gnuplot format (5 points per cell, blank line between rows).
+
+## Configuration system
+
+All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each file in that directory is a valid scenario. To add a new one, copy any existing file, rename it, and adjust the constants — it will appear immediately in `--list-configs` with no further changes required.
+
+`config.py` is the loader: `config.load(name)` imports the named file via `importlib`, copies its uppercase constants into `config`'s own namespace, and returns. All consuming modules hold a reference to the `config` module object (not to individual values), so constants updated by `load()` are visible to every subsequent function call.
+
+| Parameter | Default |
+|---|---|
+| `MESH_N` | 10 |
+| `E_UNIFORM` | 1.0 |
+| `POPULATION` | 50 |
+| `GENERATIONS` | 1000 |
+| `MUTATION_RATE` | 0.2 |
+| `CONTROL_DIVISOR` | 5 |
+| `DIVERGE_RATE` | 0.5 |
+| `INITIAL_STEP` | 1.0 |
+| `STEP_FACTOR` | 2 |
+| `MUTATION_BIAS` | 0.5 |
+| `FOLD_PENALTY` | 1000.0 |
+| `MAX_WORKERS` | 8 |
 
 ---
 

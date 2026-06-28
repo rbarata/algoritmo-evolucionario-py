@@ -27,6 +27,10 @@ After 1 000 generations the champion's mesh is returned.
     └── algoritmo_evolucionario/
         ├── app.py                   # top-level logic: codifica, avalia, reporta, main
         ├── automato.py              # EA loop
+        ├── config.py                # dynamic config loader (load / list_available)
+        ├── configs/
+        │   ├── default.py           # standard scenario (n=10, pop=50, gen=1000)
+        │   └── small.py             # quick smoke-test (n=5, pop=20, gen=100)
         ├── sonda.py                 # orchestrates generate → evaluate (parallel) → select
         ├── populacao.py             # population management
         ├── individuo.py             # individual: chromosome + fitness + state + age
@@ -62,21 +66,34 @@ python -m algoritmo_evolucionario
 algoritmo-evolucionario
 ```
 
+A named configuration can be selected at runtime:
+
+```bash
+algoritmo-evolucionario --config small   # quick 100-generation run
+algoritmo-evolucionario --list-configs   # print all available configs
+```
+
 Output is printed to stdout: one line per iteration reporting the champion's fitness, followed by the final mesh node coordinates in gnuplot-compatible format (five points per cell, blank line between rows).
 
-## EA parameters
+## Configuration
 
-| Parameter | Value |
-|---|---|
-| Population size | 50 |
-| Generations | 1 000 |
-| Chromosome mutation rate | 0.2 |
-| Step-size mutation rate | 0.04 |
-| Individuals eliminated per generation | 25 |
-| Crossover | Single-point |
-| Encoding | Flattened `Kx` and `Ky` matrices |
-| Mesh solve | Exact sparse direct solve (SuperLU via scipy) |
-| Selection | `heapq.nsmallest` — O(n + k log n) |
-| Evaluation | Parallel — `ProcessPoolExecutor` |
+All tuneable parameters are defined in `src/algoritmo_evolucionario/configs/`. Each `.py` file in that directory is a selectable scenario. To create a new one, copy any existing file, rename it, and adjust the constants — it will appear in `--list-configs` immediately with no code changes.
+
+Default parameter values (`configs/default.py`):
+
+| Parameter | Value | Description |
+|---|---|---|
+| `MESH_N` | 10 | Grid resolution (n×n cells, (n+1)² nodes) |
+| `POPULATION` | 50 | Number of individuals |
+| `GENERATIONS` | 1 000 | EA iterations |
+| `MUTATION_RATE` | 0.2 | Chromosome mutation probability per individual |
+| `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
+| `FOLD_PENALTY` | 1 000 | Weight on folded (negative-area) cells |
+| `MAX_WORKERS` | 8 | Max parallel evaluation workers |
+| Crossover | — | Single-point |
+| Encoding | — | Flattened `Kx` and `Ky` matrices |
+| Mesh solve | — | Exact sparse direct solve (SuperLU via scipy) |
+| Selection | — | `heapq.nsmallest` — O(n + k log n) |
+| Evaluation | — | Parallel — `ProcessPoolExecutor` |
 
 The chromosome also carries a `controlo` (step-size) vector that co-evolves with the chromosome values — a self-adaptive evolution strategy analogous to ES with σ adaptation.
