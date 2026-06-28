@@ -6,12 +6,12 @@ Python port of a 1998 Perl research project. Uses an evolutionary algorithm to o
 
 Given a 2D domain with material properties (matrix `E`), the algorithm finds node positions that minimise cell area variance, producing a well-conditioned mesh.
 
-**How fitness is computed:** the mesh node positions `(X, Y)` are solved from a diffusion PDE using the TDMA iterative solver. Each quadrilateral cell's signed area is multiplied by the local material property `E[i][j]`. The fitness of a candidate solution is `1 / (1 + soma)`, where `soma` is the sum of those weighted areas — folded cells (negative area) are penalised by a factor of 1000.
+**How fitness is computed:** the mesh node positions `(X, Y)` are found by solving a diffusion PDE with Dirichlet boundary conditions. The stiffness matrix is assembled as a sparse CSR matrix from a 5-point stencil and solved exactly with `scipy.sparse.linalg.spsolve`. Each quadrilateral cell's signed area is multiplied by the local material property `E[i][j]`. The fitness of a candidate solution is `1 / (1 + soma)`, where `soma` is the sum of those weighted areas — folded cells (negative area) are penalised by a factor of 1000.
 
 **How the EA works:** a population of 50 individuals each encodes a candidate pair of diffusivity matrices `(Kx, Ky)` as a flat vector (the chromosome). Each generation:
 
 1. **Generate** — dead individuals are replaced via single-point crossover between two live parents; all individuals may mutate their chromosome values or their self-adaptive step sizes.
-2. **Evaluate** — fitness is computed for every individual.
+2. **Evaluate** — fitness is computed for every individual in parallel using `ProcessPoolExecutor`.
 3. **Select** — the 25 least-fit individuals are marked for replacement next generation.
 
 After 1 000 generations the champion's mesh is returned.
@@ -21,20 +21,17 @@ After 1 000 generations the champion's mesh is returned.
 ```
 .
 ├── main.py                          # convenience entry point
-├── pyproject.toml
+├── pyproject.toml                   # deps: numpy>=1.21, scipy>=1.7
 ├── tests/
 └── src/
     └── algoritmo_evolucionario/
         ├── app.py                   # top-level logic: codifica, avalia, reporta, main
         ├── automato.py              # EA loop
-        ├── sonda.py                 # orchestrates generate → evaluate → select
+        ├── sonda.py                 # orchestrates generate → evaluate (parallel) → select
         ├── populacao.py             # population management
         ├── individuo.py             # individual: chromosome + fitness + state + age
         ├── cromossoma.py            # crossover, mutation, self-adaptive step sizes
-        ├── gauss.py                 # CLT-based Gaussian random number generator
-        ├── malha.py                 # mesh PDE solver (calcular_KK, calcular_XY, …)
-        ├── tdma.py                  # alternating-direction TDMA/Gauss-Seidel solver
-        ├── matriz.py                # Gaussian elimination with partial pivoting
+        ├── malha.py                 # mesh solver: calcular_KK, calcular_XY, calcular_soma
         ├── quadrilatero.py          # quadrilateral geometry and signed area
         ├── ponto.py                 # 2D point
         └── util.py                  # print_title, max_val, min_val
@@ -78,5 +75,8 @@ Output is printed to stdout: one line per iteration reporting the champion's fit
 | Individuals eliminated per generation | 25 |
 | Crossover | Single-point |
 | Encoding | Flattened `Kx` and `Ky` matrices |
+| Mesh solve | Exact sparse direct solve (SuperLU via scipy) |
+| Selection | `heapq.nsmallest` — O(n + k log n) |
+| Evaluation | Parallel — `ProcessPoolExecutor` |
 
 The chromosome also carries a `controlo` (step-size) vector that co-evolves with the chromosome values — a self-adaptive evolution strategy analogous to ES with σ adaptation.
