@@ -1,8 +1,9 @@
 import numpy as np
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import spsolve
 
 from .ponto import Ponto
 from .quadrilatero import Quadrilatero
-from .tdma import calcular_tdma
 from .util import print_title, max_val, min_val
 
 
@@ -32,38 +33,35 @@ def calcular_KK(n, E, debug=0):
 
 
 def calcular_XY(n, Kx, Ky, debug=0):
-    """Return X, Y as (n+1)×(n+1) numpy arrays.
+    """Return X, Y as (n+1)×(n+1) numpy arrays via direct sparse solve.
 
-    Boundary conditions built internally:
-      Vx: left col = 0, right col = 1  (X fixed)
-      Vy: top row  = 0, bottom row = 1 (Y fixed)
+    Assembles the 5-point diffusion stencil as a sparse linear system and
+    solves it exactly with SuperLU — one solve for X (Vx BCs) and one for Y
+    (Vy BCs).  Replaces the previous 3-iteration ADI approximation.
     """
     dim = n + 1
+    N   = dim * dim
 
-    # Initial guess: uniform grid
-    j_lin = np.linspace(0.0, 1.0, dim)
-    i_lin = np.linspace(0.0, 1.0, dim)
-    X = np.tile(j_lin, (dim, 1))          # X[i,j] = j/n
-    Y = np.tile(i_lin[:, None], (1, dim)) # Y[i,j] = i/n
-
-    # Boundary masks (True = Dirichlet)
-    Vx_bnd = np.zeros((dim, dim), dtype=bool)
-    Vx_bnd[:, 0] = True
-    Vx_bnd[:, n] = True
-    Vx_vals = np.zeros((dim, dim))
-    Vx_vals[:, n] = 1.0
-
-    Vy_bnd = np.zeros((dim, dim), dtype=bool)
-    Vy_bnd[0, :] = True
-    Vy_bnd[n, :] = True
-    Vy_vals = np.zeros((dim, dim))
-    Vy_vals[n, :] = 1.0
-
-    # Coefficient matrices (shared for X and Y solves)
     aP, aE, aN, aW, aS, bP = _build_coeffs(n, Kx, Ky, dim)
 
-    calcular_tdma(X, aP, aE, aN, aW, aS, bP, Vx_bnd, Vx_vals, dim, 3, debug - 1)
-    calcular_tdma(Y, aP, aE, aN, aW, aS, bP, Vy_bnd, Vy_vals, dim, 3, debug - 1)
+    # Per-node row/col indices, shared between the two assemblies
+    node = np.arange(N)
+    i_arr, j_arr = np.divmod(node, dim)
+
+    # Vx: left col (j=0) → T=0 ; right col (j=n) → T=1
+    Vx_bnd  = (j_arr == 0) | (j_arr == n)
+    Vx_vals = (j_arr == n).astype(float)
+    Ax, bx  = _assemble(aP, aE, aN, aW, aS, bP, Vx_bnd, Vx_vals,
+                         node, i_arr, j_arr, dim, N)
+
+    # Vy: top row (i=0) → T=0 ; bottom row (i=n) → T=1
+    Vy_bnd  = (i_arr == 0) | (i_arr == n)
+    Vy_vals = (i_arr == n).astype(float)
+    Ay, by  = _assemble(aP, aE, aN, aW, aS, bP, Vy_bnd, Vy_vals,
+                         node, i_arr, j_arr, dim, N)
+
+    X = spsolve(Ax, bx).reshape(dim, dim)
+    Y = spsolve(Ay, by).reshape(dim, dim)
 
     return X, Y
 
@@ -82,6 +80,44 @@ def _build_coeffs(n, Kx, Ky, dim):
     bP = np.zeros((dim, dim))
 
     return aP, aE, aN, aW, aS, bP
+
+
+def _assemble(aP, aE, aN, aW, aS, bP, bnd, bc_vals, node, i_arr, j_arr, dim, N):
+    """Build the CSR stiffness matrix and RHS for one diffusion solve.
+
+    Boundary rows become identity rows (A[k,k]=1, b[k]=bc).
+    Interior rows carry the 5-point stencil:
+        aP·T - aE·T_east - aW·T_west - aS·T_south - aN·T_north = bP
+    """
+    interior = ~bnd
+    aP_f = aP.ravel(); aE_f = aE.ravel(); aW_f = aW.ravel()
+    aN_f = aN.ravel(); aS_f = aS.ravel(); bP_f = bP.ravel()
+
+    # Main diagonal: 1 (boundary) or aP (interior)
+    rs = [node];        cs = [node];        vs = [np.where(bnd, 1.0, aP_f)]
+
+    # East  (j → j+1)
+    m = interior & (j_arr + 1 < dim)
+    rs.append(node[m]); cs.append(node[m] + 1);   vs.append(-aE_f[m])
+
+    # West  (j → j-1)
+    m = interior & (j_arr > 0)
+    rs.append(node[m]); cs.append(node[m] - 1);   vs.append(-aW_f[m])
+
+    # South (i → i+1)
+    m = interior & (i_arr + 1 < dim)
+    rs.append(node[m]); cs.append(node[m] + dim); vs.append(-aS_f[m])
+
+    # North (i → i-1)
+    m = interior & (i_arr > 0)
+    rs.append(node[m]); cs.append(node[m] - dim); vs.append(-aN_f[m])
+
+    A = csr_matrix(
+        (np.concatenate(vs), (np.concatenate(rs), np.concatenate(cs))),
+        shape=(N, N),
+    )
+    b = np.where(bnd, bc_vals, bP_f)
+    return A, b
 
 
 def calcular_soma(n, X, Y, E, debug=0):
