@@ -1,11 +1,12 @@
 import random
+from .config import INITIAL_STEP, MUTATION_BIAS, STEP_FACTOR
 
 
 class Cromossoma:
     def __init__(self, ref, controlo=None):
         self.cromossoma = list(ref)
         if controlo is None:
-            self.controlo = [1.0] * len(self.cromossoma)
+            self.controlo = [INITIAL_STEP] * len(self.cromossoma)
         else:
             self.controlo = list(controlo)
 
@@ -24,7 +25,7 @@ class Cromossoma:
         pos = random.randint(0, comprimento)
         if debug > 0:
             print(f"#A mutar cromossoma - {pos}...")
-        if random.random() > 0.5:
+        if random.random() > MUTATION_BIAS:
             self.cromossoma[pos] += self.controlo[pos]
         else:
             self.cromossoma[pos] -= self.controlo[pos]
@@ -34,10 +35,10 @@ class Cromossoma:
         pos = random.randint(0, comprimento)
         if debug > 0:
             print(f"#A mutar controlo - {pos}...")
-        if random.random() > 0.5:
-            self.controlo[pos] *= 2
+        if random.random() > MUTATION_BIAS:
+            self.controlo[pos] *= STEP_FACTOR
         else:
-            self.controlo[pos] /= 2
+            self.controlo[pos] /= STEP_FACTOR
 
     def valor(self):
         return list(self.cromossoma)

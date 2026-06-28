@@ -2,10 +2,10 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 
+from .config import DIVERGE_RATE, MAX_WORKERS
 from .populacao import Populacao
 
-# Use at most 8 workers; fall back to serial if only 1 CPU.
-_N_WORKERS = min(os.cpu_count() or 1, 8)
+_N_WORKERS = min(os.cpu_count() or 1, MAX_WORKERS)
 
 
 class Sonda:
@@ -23,7 +23,7 @@ class Sonda:
         for n in range(dimensao):
             if debug > 0:
                 print(f"#A mutar - passagem {n}")
-            self.populacao.diverge(0.5, debug - 1)
+            self.populacao.diverge(DIVERGE_RATE, debug - 1)
 
     def __del__(self):
         if getattr(self, '_executor', None):

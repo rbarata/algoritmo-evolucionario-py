@@ -1,5 +1,6 @@
 import heapq
 import random
+from .config import CONTROL_DIVISOR
 from .individuo import Individuo
 
 
@@ -31,7 +32,7 @@ class Populacao:
                 )
             if random.random() <= taxa_de_mutacao:
                 self.individuos[n].muta_cromossoma(self.comprimento, debug - 1)
-            if random.random() <= taxa_de_mutacao / 5:
+            if random.random() <= taxa_de_mutacao / CONTROL_DIVISOR:
                 self.individuos[n].muta_controlo(self.comprimento, debug - 1)
 
         for n in range(self.dimensao):

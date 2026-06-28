@@ -1,9 +1,10 @@
+from .config import MUTATION_RATE
 from .sonda import Sonda
 
 
 def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):
     sonda = Sonda(
-        taxa_de_mutacao=0.2,
+        taxa_de_mutacao=MUTATION_RATE,
         a_eliminar=populacao // 2,
         dimensao=populacao,
         modelo=modelo,

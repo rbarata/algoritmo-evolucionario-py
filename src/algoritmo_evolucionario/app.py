@@ -3,6 +3,7 @@ from datetime import datetime
 import numpy as np
 
 from .automato import automato
+from .config import E_UNIFORM, GENERATIONS, MESH_N, POPULATION
 from .malha import calcular_KK, calcular_XY, calcular_soma
 from .util import print_title
 
@@ -52,8 +53,8 @@ def main():
 
     print_title(datetime.now().strftime("%c"))
 
-    n = 10
-    E = [[1] * n for _ in range(n)]
+    n = MESH_N
+    E = [[E_UNIFORM] * n for _ in range(n)]
 
     Kx, Ky = calcular_KK(n, E, debug - 1)
 
@@ -65,6 +66,6 @@ def main():
     print(f"##aptidão:{aptidao_inicial}")
     reporta(modelo, parm, debug)
 
-    automato(50, modelo, avalia, reporta, 1000, parm, debug)
+    automato(POPULATION, modelo, avalia, reporta, GENERATIONS, parm, debug)
 
     print_title(datetime.now().strftime("%c"))
