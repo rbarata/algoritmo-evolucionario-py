@@ -133,3 +133,7 @@ dmypy.json
 # Data files
 *.dat
 *.tmp
+
+# Other
+tmp/
+malha.mp4
