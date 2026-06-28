@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy as np
 
 from .automato import automato
-from .config import E_UNIFORM, GENERATIONS, MESH_N, POPULATION
+from . import config
 from .malha import calcular_KK, calcular_XY, calcular_soma
 from .util import print_title
 
@@ -49,12 +49,31 @@ def reporta(codificado, parm, debug=0):
 
 
 def main():
+    import argparse
+    p = argparse.ArgumentParser(description="Algoritmo Evolucionário — optimização de malha 2D")
+    p.add_argument(
+        "--config", default="default", metavar="NOME",
+        help="configuração a usar (ficheiro em configs/; omitir → default)",
+    )
+    p.add_argument(
+        "--list-configs", action="store_true",
+        help="listar configurações disponíveis e sair",
+    )
+    args = p.parse_args()
+
+    if args.list_configs:
+        from .config import _list_available
+        print("\n".join(_list_available()))
+        return
+
+    config.load(args.config)
+
     debug = 0
 
     print_title(datetime.now().strftime("%c"))
 
-    n = MESH_N
-    E = [[E_UNIFORM] * n for _ in range(n)]
+    n = config.MESH_N
+    E = [[config.E_UNIFORM] * n for _ in range(n)]
 
     Kx, Ky = calcular_KK(n, E, debug - 1)
 
@@ -66,6 +85,6 @@ def main():
     print(f"##aptidão:{aptidao_inicial}")
     reporta(modelo, parm, debug)
 
-    automato(POPULATION, modelo, avalia, reporta, GENERATIONS, parm, debug)
+    automato(config.POPULATION, modelo, avalia, reporta, config.GENERATIONS, parm, debug)
 
     print_title(datetime.now().strftime("%c"))

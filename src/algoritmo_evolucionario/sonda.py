@@ -2,10 +2,8 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 from itertools import repeat
 
-from .config import DIVERGE_RATE, MAX_WORKERS
+from . import config
 from .populacao import Populacao
-
-_N_WORKERS = min(os.cpu_count() or 1, MAX_WORKERS)
 
 
 class Sonda:
@@ -17,13 +15,14 @@ class Sonda:
         self.f_reporta       = f_reporta
         self.parm            = parm
 
-        self._executor = ProcessPoolExecutor(max_workers=_N_WORKERS) if _N_WORKERS > 1 else None
+        n_workers = min(os.cpu_count() or 1, config.MAX_WORKERS)
+        self._executor = ProcessPoolExecutor(max_workers=n_workers) if n_workers > 1 else None
 
         self.populacao = Populacao(dimensao, modelo, debug - 1)
         for n in range(dimensao):
             if debug > 0:
                 print(f"#A mutar - passagem {n}")
-            self.populacao.diverge(DIVERGE_RATE, debug - 1)
+            self.populacao.diverge(config.DIVERGE_RATE, debug - 1)
 
     def __del__(self):
         if getattr(self, '_executor', None):

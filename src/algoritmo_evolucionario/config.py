@@ -1,23 +1,41 @@
-# config.py — all tuneable parameters in one place
+"""Runtime-selectable configuration.
 
-# ── Problem ───────────────────────────────────────────────────────────────────
-MESH_N        = 10     # grid resolution: MESH_N×MESH_N cells, (MESH_N+1)² nodes
-E_UNIFORM     = 1.0    # material property value for the uniform starting grid
+Call load(name) before starting the EA to switch to a different scenario.
+Config files live in the configs/ sub-package; each file defines uppercase
+constants. load() copies those constants into this module's namespace so
+that `from . import config; config.X` always sees the current values.
+"""
+import importlib
+from pathlib import Path
 
-# ── EA ────────────────────────────────────────────────────────────────────────
-POPULATION    = 50     # number of individuals
-GENERATIONS   = 1000   # number of EA iterations
-MUTATION_RATE = 0.2    # chromosome mutation probability per individual per generation
-CONTROL_DIVISOR = 5    # control mutation rate = MUTATION_RATE / CONTROL_DIVISOR
-DIVERGE_RATE  = 0.5    # step-size mutation rate during initial population diversification
+_name: str = ""
 
-# ── Self-adaptive step sizes ──────────────────────────────────────────────────
-INITIAL_STEP  = 1.0    # starting controlo value for every gene
-STEP_FACTOR   = 2      # step sizes are multiplied or divided by this on mutation
-MUTATION_BIAS = 0.5    # probability of adding (vs subtracting) the step
 
-# ── Fitness ───────────────────────────────────────────────────────────────────
-FOLD_PENALTY  = 1000.0  # weight applied to folded (negative-area) cells
+def load(name: str = "default") -> None:
+    """Load a named config file from the configs/ sub-package."""
+    global _name
+    try:
+        mod = importlib.import_module(f".configs.{name}", package=__package__)
+    except ModuleNotFoundError:
+        available = _list_available()
+        raise SystemExit(
+            f"Configuração '{name}' não encontrada. "
+            f"Disponíveis: {', '.join(available) or '(nenhuma)'}"
+        )
+    g = globals()
+    for k, v in vars(mod).items():
+        if k.isupper():
+            g[k] = v
+    _name = name
 
-# ── Performance ───────────────────────────────────────────────────────────────
-MAX_WORKERS   = 8      # upper cap on parallel evaluation worker processes
+
+def _list_available() -> list[str]:
+    configs_dir = Path(__file__).parent / "configs"
+    return sorted(
+        p.stem for p in configs_dir.glob("*.py") if p.stem != "__init__"
+    )
+
+
+# Populate with defaults at import time so the module is always fully
+# initialised, even if load() is never called explicitly.
+load("default")

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
 
-from .config import FOLD_PENALTY
+from . import config
 from .ponto import Ponto
 from .quadrilatero import Quadrilatero
 from .util import print_title, max_val, min_val
@@ -137,7 +137,7 @@ def calcular_soma(n, X, Y, E, debug=0):
 
     area_s = (ux * vy - vx * uy + wx * vy - vx * wy) / 2.0
     prod   = area_s * E_np
-    soma   = float(np.where(prod > 0, prod, -FOLD_PENALTY * prod).sum())
+    soma   = float(np.where(prod > 0, prod, -config.FOLD_PENALTY * prod).sum())
 
     if debug > 0:
         print(f"\n#soma={soma}")
