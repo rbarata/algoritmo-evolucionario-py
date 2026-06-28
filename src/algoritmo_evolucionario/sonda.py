@@ -9,11 +9,10 @@ _N_WORKERS = min(os.cpu_count() or 1, 8)
 
 
 class Sonda:
-    def __init__(self, taxa_de_mutacao, a_eliminar, idade_maxima,
+    def __init__(self, taxa_de_mutacao, a_eliminar,
                  dimensao, modelo, f_avalia, f_reporta, parm, debug=0):
         self.taxa_de_mutacao = taxa_de_mutacao
         self.a_eliminar      = a_eliminar
-        self.idade_maxima    = idade_maxima
         self.f_avalia        = f_avalia
         self.f_reporta       = f_reporta
         self.parm            = parm
@@ -34,7 +33,6 @@ class Sonda:
         print("#" + "\t" * tab + "Sonda:")
         print("#" + "\t" * (tab + 1) + f"Taxa de mutação:{self.taxa_de_mutacao}")
         print("#" + "\t" * (tab + 1) + f"A eliminar:{self.a_eliminar}")
-        print("#" + "\t" * (tab + 1) + f"Idade máxima:{self.idade_maxima}")
         self.populacao.print_populacao(tab + 1)
 
     def gera(self, debug=0):

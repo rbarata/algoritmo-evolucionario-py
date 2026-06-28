@@ -5,7 +5,6 @@ def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):
     sonda = Sonda(
         taxa_de_mutacao=0.2,
         a_eliminar=populacao // 2,
-        idade_maxima=20,
         dimensao=populacao,
         modelo=modelo,
         f_avalia=avalia,
