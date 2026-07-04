@@ -30,7 +30,9 @@ After 1 000 generations the champion's mesh is returned.
         ├── config.py                # dynamic config loader (load / list_available)
         ├── configs/
         │   ├── default.py           # standard scenario (n=10, pop=50, gen=1000)
-        │   └── small.py             # quick smoke-test (n=5, pop=20, gen=100)
+        │   ├── small.py             # quick smoke-test (n=5, pop=20, gen=100)
+        │   ├── large.py             # intensive run (n=20, pop=100, gen=2000)
+        │   └── single_point.py      # 10×10, single high-diffusivity cell at E[4][5]=10
         ├── sonda.py                 # orchestrates generate → evaluate (parallel) → select
         ├── populacao.py             # population management
         ├── individuo.py             # individual: chromosome + fitness + state + age
@@ -84,6 +86,7 @@ Default parameter values (`configs/default.py`):
 | Parameter | Value | Description |
 |---|---|---|
 | `MESH_N` | 10 | Grid resolution (n×n cells, (n+1)² nodes) |
+| `E_MATRIX` | `[[1.0]*n]*n` | Material property per cell — define explicitly for non-uniform cases |
 | `POPULATION` | 50 | Number of individuals |
 | `GENERATIONS` | 1 000 | EA iterations |
 | `MUTATION_RATE` | 0.2 | Chromosome mutation probability per individual |
