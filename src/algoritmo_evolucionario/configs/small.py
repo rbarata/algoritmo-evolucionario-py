@@ -1,7 +1,7 @@
 # small — quick smoke-test (5×5 mesh, 100 generations, population 20)
 
 MESH_N          = 5
-E_UNIFORM       = 1.0
+E_MATRIX        = [[1.0] * MESH_N for _ in range(MESH_N)]
 
 POPULATION      = 20
 GENERATIONS     = 100

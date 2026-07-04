@@ -73,7 +73,7 @@ def main():
     print_title(datetime.now().strftime("%c"))
 
     n = config.MESH_N
-    E = [[config.E_UNIFORM] * n for _ in range(n)]
+    E = config.E_MATRIX
 
     Kx, Ky = calcular_KK(n, E, debug - 1)
 

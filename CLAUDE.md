@@ -170,7 +170,7 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 | Parameter | Default |
 |---|---|
 | `MESH_N` | 10 |
-| `E_UNIFORM` | 1.0 |
+| `E_MATRIX` | `[[1.0]*n]*n` (uniform) |
 | `POPULATION` | 50 |
 | `GENERATIONS` | 1000 |
 | `MUTATION_RATE` | 0.2 |

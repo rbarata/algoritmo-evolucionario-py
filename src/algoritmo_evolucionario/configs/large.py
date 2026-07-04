@@ -1,7 +1,7 @@
 # large — intensive run (20×20 mesh, 2000 generations, population 100)
 
 MESH_N          = 20
-E_UNIFORM       = 1.0
+E_MATRIX        = [[1.0] * MESH_N for _ in range(MESH_N)]
 
 POPULATION      = 100
 GENERATIONS     = 2000
