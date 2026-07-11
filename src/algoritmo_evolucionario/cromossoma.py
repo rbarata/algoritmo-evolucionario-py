@@ -15,10 +15,19 @@ class Cromossoma:
         print("#" + "\t" * tab + f"Controlo: {self.controlo}")
 
     @staticmethod
-    def cruza(pai1, pai2, comprimento, debug=0):
-        cross = random.randint(0, comprimento)
-        cromossoma = pai1.cromossoma[:cross + 1] + pai2.cromossoma[cross + 1:comprimento + 1]
-        controlo = pai1.controlo[:cross + 1] + pai2.controlo[cross + 1:comprimento + 1]
+    def cruza(pai1, pai2, kx_size, n, debug=0):
+        # Independent row-aligned crossover for Kx and Ky regions.
+        # Kx: (n+1) rows of width n; Ky: n rows of width (n+1).
+        cx = random.randint(0, n + 1) * n          # cut within Kx region
+        cy = random.randint(0, n) * (n + 1)        # cut within Ky region
+        cromossoma = (pai1.cromossoma[:cx]
+                      + pai2.cromossoma[cx:kx_size]
+                      + pai1.cromossoma[kx_size:kx_size + cy]
+                      + pai2.cromossoma[kx_size + cy:])
+        controlo   = (pai1.controlo[:cx]
+                      + pai2.controlo[cx:kx_size]
+                      + pai1.controlo[kx_size:kx_size + cy]
+                      + pai2.controlo[kx_size + cy:])
         return Cromossoma(cromossoma, controlo)
 
     def muta_cromossoma(self, comprimento, debug=0):
@@ -29,7 +38,6 @@ class Cromossoma:
             self.cromossoma[pos] += self.controlo[pos]
         else:
             self.cromossoma[pos] -= self.controlo[pos]
-            self.cromossoma[pos] = abs(self.cromossoma[pos])
 
     def muta_controlo(self, comprimento, debug=0):
         pos = random.randint(0, comprimento)

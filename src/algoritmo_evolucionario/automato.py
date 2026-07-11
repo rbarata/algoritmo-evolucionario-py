@@ -21,5 +21,5 @@ def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):
         if debug > 0:
             sonda.print_sonda()
 
-    campiao = sonda.populacao.campiao
-    return sonda.populacao.individuos[campiao].cromossoma.valor()
+    campeao = sonda.populacao.campeao
+    return sonda.populacao.individuos[campeao].cromossoma.valor()

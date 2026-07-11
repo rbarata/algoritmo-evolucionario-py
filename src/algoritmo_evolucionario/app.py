@@ -9,16 +9,20 @@ from .util import print_title
 
 
 def codifica(n, Kx, Ky, debug=0):
-    Kx_np = np.asarray(Kx)
-    Ky_np = np.asarray(Ky)
-    return list(np.concatenate([Kx_np.ravel(), Ky_np.ravel()]))
+    # Strip the always-zero last column of Kx and last row of Ky before encoding.
+    # Log-encode so any mutation value maps to a valid positive diffusivity.
+    kx = np.log(np.asarray(Kx, dtype=float)[:, :n])   # (n+1, n)
+    ky = np.log(np.asarray(Ky, dtype=float)[:n, :])   # (n, n+1)
+    return list(np.concatenate([kx.ravel(), ky.ravel()]))
 
 
 def descodifica(n, codificado, debug=0):
-    size = (n + 1) ** 2
-    arr  = np.asarray(codificado)
-    Kx   = arr[:size].reshape(n + 1, n + 1)
-    Ky   = arr[size:2 * size].reshape(n + 1, n + 1)
+    kx_size = (n + 1) * n
+    arr = np.asarray(codificado)
+    Kx = np.zeros((n + 1, n + 1))
+    Ky = np.zeros((n + 1, n + 1))
+    Kx[:, :n] = np.exp(arr[:kx_size].reshape(n + 1, n))
+    Ky[:n, :] = np.exp(arr[kx_size:].reshape(n, n + 1))
     return Kx, Ky
 
 

@@ -15,9 +15,9 @@ class Individuo:
         print("#" + "\t" * (tab + 1) + f"Estado:{self.estado}")
         print("#" + "\t" * (tab + 1) + f"Idade:{self.idade}")
 
-    def cruza(self, pai1, pai2, comprimento, debug=0):
+    def cruza(self, pai1, pai2, kx_size, n, debug=0):
         self.cromossoma = Cromossoma.cruza(
-            pai1.cromossoma, pai2.cromossoma, comprimento, debug - 1
+            pai1.cromossoma, pai2.cromossoma, kx_size, n, debug - 1
         )
         self.estado = 'N'
         self.aptidao = 0.0

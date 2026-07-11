@@ -18,7 +18,7 @@ class Sonda:
         n_workers = min(os.cpu_count() or 1, config.MAX_WORKERS)
         self._executor = ProcessPoolExecutor(max_workers=n_workers) if n_workers > 1 else None
 
-        self.populacao = Populacao(dimensao, modelo, debug - 1)
+        self.populacao = Populacao(dimensao, modelo, parm['n'], debug - 1)
         for n in range(dimensao):
             if debug > 0:
                 print(f"#A mutar - passagem {n}")
@@ -62,19 +62,19 @@ class Sonda:
                 min_apt, nmin = apt, n
             if apt > max_apt:
                 max_apt, nmax = apt, n
-        pop.campiao = nmax
+        pop.campeao = nmax
         pop.besta   = nmin
 
     def reporta(self, iteracao, debug=0):
         pop     = self.populacao
-        campiao = pop.campiao
+        campeao = pop.campeao
         print("#***************************************")
         print(f"#iteração {iteracao}")
-        print(f"#campeão {campiao}")
-        if campiao == -1:
+        print(f"#campeão {campeao}")
+        if campeao == -1:
             print("#Não há valores...")
         else:
-            ind = pop.individuos[campiao]
+            ind = pop.individuos[campeao]
             print(f"#aptidão {ind.aptidao}")
             print(f"#idade {ind.idade}")
             ind.cromossoma.print_cromossoma()
