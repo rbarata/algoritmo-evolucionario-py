@@ -10,11 +10,11 @@ Given a 2D domain with material properties (matrix `E`), the algorithm finds nod
 
 **How the EA works:** a population of 50 individuals each encodes a candidate pair of diffusivity matrices `(Kx, Ky)` as a flat vector (the chromosome). The matrices are log-encoded — each gene stores `log(Kx)` or `log(Ky)` — so any mutation value maps to a valid positive diffusivity. Boundary columns/rows that are always zero are excluded from the chromosome. Each generation:
 
-1. **Generate** — dead individuals are replaced via crossover between two live parents; Kx and Ky regions are crossed over independently at a freely chosen cut point (spatial locality is preserved by the Hilbert ordering, not the crossover operator). All individuals may then mutate their chromosome values or their self-adaptive step sizes.
+1. **Generate** — dead individuals are replaced via crossover between two live parents. Parents are chosen with probability proportional to `(fitness − min_fitness + ε)^SELECTION_PRESSURE`, so fitter individuals produce more offspring. Kx and Ky regions are crossed over independently at a freely chosen cut point (spatial locality preserved by the Hilbert ordering). All individuals may then mutate their chromosome values or their self-adaptive step sizes.
 2. **Evaluate** — fitness is computed for every individual in parallel using `ProcessPoolExecutor`.
-3. **Select** — the lowest-fitness individuals (20% of the population by default) are marked for replacement next generation.
+3. **Select** — `SELECTION_RATE` of the population is marked for replacement by fitness-gap-based probabilistic selection: death weight = `(max_fitness − fitness + ε)^SELECTION_PRESSURE`. This means an individual vastly below the best is much more likely to die than one just slightly below it; the gap from the best determines elimination probability, not just ordinal rank.
 
-If the champion's fitness does not improve for `STAGNATION_WINDOW` consecutive generations, all step sizes are reset to `INITIAL_STEP`, allowing the population to escape local plateaus. The restart is reported on stdout.
+If the champion's fitness does not improve for `STAGNATION_WINDOW` consecutive generations, all step sizes are multiplied by `STEP_FACTOR` (capped at `INITIAL_STEP`) to escape collapsed step-size plateaus. At most one boost fires per `STAGNATION_WINDOW` generations.
 
 After 1 000 generations the champion's mesh is returned.
 
@@ -93,7 +93,8 @@ Default parameter values (`configs/default.py`):
 | `POPULATION` | 50 | Number of individuals |
 | `GENERATIONS` | 1 000 | EA iterations |
 | `SELECTION_RATE` | 0.2 | Fraction of population eliminated each generation |
-| `STAGNATION_WINDOW` | 100 | Generations without improvement before step-size restart |
+| `SELECTION_PRESSURE` | 2 | Exponent on fitness-gap weights for both death and parent selection — higher = more non-linear advantage for fit individuals |
+| `STAGNATION_WINDOW` | 50 | Generations without improvement before step-size boost; also minimum gap between consecutive boosts |
 | `MUTATION_RATE` | 0.2 | Chromosome mutation probability per individual |
 | `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
 | `INITIAL_STEP` | 1.0 | Starting step size for all `controlo` values |

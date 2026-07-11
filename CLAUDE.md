@@ -15,12 +15,12 @@ Given an `n×n` grid of material properties `E[i][j]`, the algorithm finds node 
 **Mesh solve:** given `Kx` and `Ky`, node positions are found by solving a diffusion PDE with Dirichlet boundary conditions (left/right edges fixed in X; top/bottom fixed in Y). The stencil is assembled as a sparse CSR matrix and solved exactly with `scipy.sparse.linalg.spsolve` (SuperLU). One solve for X, one for Y.
 
 **EA loop (configurable; defaults: 1000 generations, population 50):**
-1. Dead individuals replaced via crossover of two live parents (independent single-point cut for Kx and Ky regions; spatial locality preserved by Hilbert encoding).
+1. Dead individuals replaced via crossover of two live parents. Parents chosen with probability proportional to `(fitness − min_fitness + ε)^SELECTION_PRESSURE` — fitter individuals produce more offspring. Independent single-point cut for Kx and Ky regions; spatial locality preserved by Hilbert encoding.
 2. Chromosome mutation: random gene ± step-size value (rate 0.2).
 3. Step-size mutation: random step-size ×2 or ÷2 (rate 0.04) — self-adaptive ES.
-4. Worst `round(POPULATION * SELECTION_RATE)` individuals marked dead (truncation selection via `heapq.nsmallest`).
+4. `round(POPULATION * SELECTION_RATE)` individuals marked dead by fitness-gap-based probabilistic selection: death weight = `(max_fitness − fitness + ε)^SELECTION_PRESSURE`. Higher-fitness individuals are disproportionately protected; the gap from the best determines the death probability, not just ordinal rank.
 5. Population evaluated in parallel using `ProcessPoolExecutor`.
-6. If champion fitness has not improved for `STAGNATION_WINDOW` consecutive generations, all `controlo` vectors are reset to `INITIAL_STEP` (stagnation restart — see `Sonda.reiniciar`).
+6. If champion fitness has not improved for `STAGNATION_WINDOW` consecutive generations, all `controlo` step sizes are multiplied by `STEP_FACTOR`, capped at `INITIAL_STEP` (stagnation boost — see `Sonda.reiniciar`). At most one boost fires per `STAGNATION_WINDOW` generations (explicit cooldown in `automato.py`).
 
 ---
 
@@ -133,7 +133,9 @@ Individual `estado` values:
 - `'M'` — Morto (marked for replacement next `refresh`)
 - `'N'` — recém-Nascido (just born via crossover; promoted to `'V'` at end of `refresh`)
 
-`selecciona(a_eliminar)`: uses `heapq.nsmallest` to find and mark the `a_eliminar` lowest-fitness live individuals as `'M'` in O(n + k log n). `a_eliminar = round(POPULATION * SELECTION_RATE)` (default 0.2 → 10 of 50).
+`selecciona(a_eliminar)`: probabilistic fitness-gap selection. Computes death weight `(max_fitness − fitness + 1e-6)^SELECTION_PRESSURE` for each live individual, normalises to a probability vector, then samples `a_eliminar` victims without replacement via `np.random.choice`. `a_eliminar = round(POPULATION * SELECTION_RATE)` (default 0.2 → 10 of 50).
+
+`refresh`: parent selection is also fitness-proportional — weights `(fitness − min_fitness + 1e-6)^SELECTION_PRESSURE` are precomputed once per generation and used for both parent draws.
 
 ---
 
@@ -176,7 +178,8 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 | `POPULATION` | 50 |
 | `GENERATIONS` | 1000 |
 | `SELECTION_RATE` | 0.2 |
-| `STAGNATION_WINDOW` | 100 |
+| `SELECTION_PRESSURE` | 2 |
+| `STAGNATION_WINDOW` | 50 |
 | `MUTATION_RATE` | 0.2 |
 | `CONTROL_DIVISOR` | 5 |
 | `DIVERGE_RATE` | 0.5 |
@@ -202,4 +205,5 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 - Chromosome genes are reordered by a Hilbert space-filling curve (`hilbert.py`) so that physically adjacent cells in the 2D mesh are also adjacent in the chromosome. This means a crossover cut at any point produces two spatially compact offspring regions, preserving spatial building blocks without needing row-aligned cuts.
 - Crossover uses independent single-point cuts for the `Kx` and `Ky` regions (`Cromossoma.cruza` takes `kx_size` only; `kx_size = len(modelo) // 2` since both halves are always equal). This prevents mixing the two matrices across parents while letting the Hilbert ordering handle within-matrix locality.
 - Selection rate is configurable (`SELECTION_RATE`, default 0.2) rather than the original hardcoded 50%. Lower selection pressure keeps more diversity in the population.
-- Stagnation restart (`Sonda.reiniciar`): if the champion fitness does not improve for `STAGNATION_WINDOW` generations, all `controlo` step sizes are reset to `INITIAL_STEP`. This recovers from collapsed step sizes, which are the primary cause of premature convergence in self-adaptive ES.
+- Truncation selection replaced by fitness-gap-based probabilistic selection: death weight `(max_fitness − fitness + ε)^SELECTION_PRESSURE` and parent birth weight `(fitness − min_fitness + ε)^SELECTION_PRESSURE`. The exponent (`SELECTION_PRESSURE`, default 2) controls non-linearity; the gap from the best/worst determines probability, not just ordinal rank, so a vastly-better individual is disproportionately more likely to survive and reproduce than one only slightly better.
+- Stagnation boost (`Sonda.reiniciar`): if the champion fitness does not improve for `STAGNATION_WINDOW` generations, all `controlo` step sizes are multiplied by `STEP_FACTOR`, capped at `INITIAL_STEP`. The cap prevents unbounded growth that would overflow `np.exp`. At most one boost fires per `STAGNATION_WINDOW` generations (enforced by `last_boost` cooldown in `automato.py`).
