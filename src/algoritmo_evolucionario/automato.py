@@ -16,8 +16,9 @@ def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):
         debug=debug - 1,
     )
 
-    best_aptidao    = 0.0
+    best_aptidao     = 0.0
     stagnation_count = 0
+    last_boost       = -config.STAGNATION_WINDOW
 
     for n in range(iteracoes):
         sonda.gera(debug - 1)
@@ -31,10 +32,12 @@ def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):
         else:
             stagnation_count += 1
 
-        if stagnation_count >= config.STAGNATION_WINDOW:
+        if (stagnation_count >= config.STAGNATION_WINDOW
+                and n - last_boost >= config.STAGNATION_WINDOW):
             print(f"#boost de step sizes na iteração {n}: {config.STAGNATION_WINDOW} gerações sem melhoria")
             sonda.reiniciar()
             stagnation_count = 0
+            last_boost       = n
 
         if debug > 0:
             sonda.print_sonda()
