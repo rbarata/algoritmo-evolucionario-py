@@ -1,4 +1,4 @@
-import random
+import random  # used in refresh (mutation) and diverge
 import numpy as np
 from . import config
 from .individuo import Individuo
@@ -22,11 +22,14 @@ class Populacao:
             self.individuos[m].print_individuo(tab + 1)
 
     def refresh(self, taxa_de_mutacao, debug=0):
+        vivos = [n for n in range(self.dimensao) if self.individuos[n].estado == 'V']
+        pais_weights = self._pesos_pais(vivos)
+
         for n in range(self.dimensao):
             individuo = self.individuos[n]
             if individuo.estado == 'M':
-                pai1 = self._escolher_vivo()
-                pai2 = self._escolher_vivo()
+                pai1 = int(np.random.choice(vivos, p=pais_weights))
+                pai2 = int(np.random.choice(vivos, p=pais_weights))
                 self.individuos[n].cruza(
                     self.individuos[pai1], self.individuos[pai2],
                     self.kx_size, debug - 1
@@ -63,8 +66,9 @@ class Populacao:
         for n in piores:
             self.individuos[n].estado = 'M'
 
-    def _escolher_vivo(self):
-        while True:
-            idx = random.randrange(self.dimensao)
-            if self.individuos[idx].estado == 'V':
-                return idx
+    def _pesos_pais(self, vivos):
+        aptidoes = np.array([self.individuos[n].aptidao for n in vivos])
+        min_apt = aptidoes.min()
+        weights = (aptidoes - min_apt + 1e-6) ** config.SELECTION_PRESSURE
+        weights /= weights.sum()
+        return weights
