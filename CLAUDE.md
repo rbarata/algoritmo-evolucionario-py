@@ -15,7 +15,7 @@ Given an `n×n` grid of material properties `E[i][j]`, the algorithm finds node 
 **Mesh solve:** given `Kx` and `Ky`, node positions are found by solving a diffusion PDE with Dirichlet boundary conditions (left/right edges fixed in X; top/bottom fixed in Y). The stencil is assembled as a sparse CSR matrix and solved exactly with `scipy.sparse.linalg.spsolve` (SuperLU). One solve for X, one for Y.
 
 **EA loop (configurable; defaults: 1000 generations, population 50):**
-1. Dead individuals replaced via single-point crossover of two live parents.
+1. Dead individuals replaced via crossover of two live parents (independent row-aligned cut for Kx and Ky regions).
 2. Chromosome mutation: random gene ± step-size value (rate 0.2).
 3. Step-size mutation: random step-size ×2 or ÷2 (rate 0.04) — self-adaptive ES.
 4. Worst 25 individuals marked dead (truncation selection via `heapq.nsmallest`).
@@ -57,7 +57,7 @@ tests/__init__.py                            empty — no tests yet
 | `E` | `list[list[float]]` | `n×n` | material property per cell |
 | `Kx`, `Ky` | `np.ndarray` | `(n+1)×(n+1)` | interface diffusivities; last col/row always 0 |
 | `X`, `Y` | `np.ndarray` | `(n+1)×(n+1)` | mesh node positions (exact sparse solve) |
-| `cromossoma` | `list[float]` | `2*(n+1)²` | flattened `Kx` then `Ky` |
+| `cromossoma` | `list[float]` | `2*n*(n+1)` | log-encoded `Kx[:, :n]` then `Ky[:n, :]` (neutral boundary genes excluded) |
 | `controlo` | `list[float]` | same | per-gene mutation step sizes (start at 1.0) |
 
 Boundary conditions are handled internally in `calcular_XY`:
@@ -110,17 +110,17 @@ Ky[i][j]:  0           if i == n
 
 ## `app.py` — encode / decode
 
-`codifica(n, Kx, Ky)` flattens the two numpy arrays with `np.concatenate([Kx.ravel(), Ky.ravel()])` and returns a Python `list` (the chromosome format used by `Cromossoma`).
+`codifica(n, Kx, Ky)` strips the always-zero last column of `Kx` and last row of `Ky`, log-encodes the remaining values (`np.log`), concatenates them, and returns a Python `list` of length `2*n*(n+1)`.
 
-`descodifica(n, codificado)` converts the flat list back to two `(n+1)×(n+1)` numpy arrays via `np.asarray(codificado).reshape(n+1, n+1)`.
+`descodifica(n, codificado)` splits at `kx_size = (n+1)*n`, exp-decodes each part (`np.exp`), reshapes to `(n+1, n)` and `(n, n+1)`, then embeds into zero-initialised `(n+1)×(n+1)` arrays — restoring the zero boundary column and row.
 
 ---
 
 ## `Cromossoma` — mutation mechanics
 
-- `muta_cromossoma(comprimento)`: picks random index `pos ∈ [0, comprimento]`; adds or subtracts `controlo[pos]`; result is `abs()`-floored when subtracting.
+- `muta_cromossoma(comprimento)`: picks random index `pos ∈ [0, comprimento]`; adds or subtracts `controlo[pos]`. No clamping — all values are valid in log-space.
 - `muta_controlo(comprimento)`: picks random index; doubles or halves `controlo[pos]`.
-- `cruza(pai1, pai2, comprimento)`: single-point crossover at random `cross ∈ [0, comprimento]`; copies chromosome AND controlo vectors.
+- `cruza(pai1, pai2, kx_size, n)`: independent row-aligned crossover. Picks a cut at a row boundary within the Kx region (`random.randint(0, n+1) * n`) and a separate cut within the Ky region (`random.randint(0, n) * (n+1)`); copies chromosome AND controlo vectors.
 
 ---
 
@@ -192,3 +192,6 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 - `Populacao.individuos` uses a `dict` keyed by int (matching the Perl `"ind_$n"` hash keys) rather than a list, to stay close to the original structure.
 - `Util::max` and `Util::min` in Perl relied on implicit return of the last expression. Python versions are explicit (`max_val`, `min_val`) to avoid shadowing builtins.
 - `gauss_rand()`, `matriz.py` (Gaussian elimination, mat2vec, vec2mat), and `tdma.py` were deleted as dead or superseded code.
+- Chromosome encodes `log(Kx[:, :n])` and `log(Ky[:n, :])` rather than raw values. Log-space keeps all decoded diffusivities strictly positive without any clamping, and makes mutation multiplicative in the original scale.
+- The last column of `Kx` (`j=n`) and last row of `Ky` (`i=n`) are always zero and are never referenced by the PDE stencil — they are excluded from the chromosome to avoid wasted neutral genes.
+- Crossover uses independent row-aligned cut points for the `Kx` and `Ky` regions (`Cromossoma.cruza` takes `kx_size` and `n` instead of a single `comprimento`). This preserves 2D spatial coherence within each matrix and prevents mixing the two matrices across parents at unrelated positions.

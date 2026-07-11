@@ -8,9 +8,9 @@ Given a 2D domain with material properties (matrix `E`), the algorithm finds nod
 
 **How fitness is computed:** the mesh node positions `(X, Y)` are found by solving a diffusion PDE with Dirichlet boundary conditions. The stiffness matrix is assembled as a sparse CSR matrix from a 5-point stencil and solved exactly with `scipy.sparse.linalg.spsolve`. Each quadrilateral cell's signed area is multiplied by the local material property `E[i][j]`. The fitness of a candidate solution is `1 / (1 + soma)`, where `soma` is the sum of those weighted areas — folded cells (negative area) are penalised by a factor of 1000.
 
-**How the EA works:** a population of 50 individuals each encodes a candidate pair of diffusivity matrices `(Kx, Ky)` as a flat vector (the chromosome). Each generation:
+**How the EA works:** a population of 50 individuals each encodes a candidate pair of diffusivity matrices `(Kx, Ky)` as a flat vector (the chromosome). The matrices are log-encoded — each gene stores `log(Kx)` or `log(Ky)` — so any mutation value maps to a valid positive diffusivity. Boundary columns/rows that are always zero are excluded from the chromosome. Each generation:
 
-1. **Generate** — dead individuals are replaced via single-point crossover between two live parents; all individuals may mutate their chromosome values or their self-adaptive step sizes.
+1. **Generate** — dead individuals are replaced via crossover between two live parents; Kx and Ky regions are crossed over independently, each at a randomly chosen row boundary. All individuals may then mutate their chromosome values or their self-adaptive step sizes.
 2. **Evaluate** — fitness is computed for every individual in parallel using `ProcessPoolExecutor`.
 3. **Select** — the 25 least-fit individuals are marked for replacement next generation.
 
@@ -93,8 +93,8 @@ Default parameter values (`configs/default.py`):
 | `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
 | `FOLD_PENALTY` | 1 000 | Weight on folded (negative-area) cells |
 | `MAX_WORKERS` | 8 | Max parallel evaluation workers |
-| Crossover | — | Single-point |
-| Encoding | — | Flattened `Kx` and `Ky` matrices |
+| Crossover | — | Independent row-aligned cut for `Kx` and `Ky` regions |
+| Encoding | — | Log-encoded `Kx[:, :n]` then `Ky[:n, :]`; chromosome length `2·n·(n+1)` |
 | Mesh solve | — | Exact sparse direct solve (SuperLU via scipy) |
 | Selection | — | `heapq.nsmallest` — O(n + k log n) |
 | Evaluation | — | Parallel — `ProcessPoolExecutor` |
