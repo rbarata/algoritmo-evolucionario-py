@@ -35,10 +35,11 @@ class Cromossoma:
         pos = random.randint(0, comprimento)
         if debug > 0:
             print(f"#A mutar cromossoma - {pos}...")
+        factor = random.uniform(0, config.MUTATION_FACTOR)
         if random.random() > config.MUTATION_BIAS:
-            self.cromossoma[pos] += self.controlo[pos]
+            self.cromossoma[pos] += factor * self.controlo[pos]
         else:
-            self.cromossoma[pos] -= self.controlo[pos]
+            self.cromossoma[pos] -= factor * self.controlo[pos]
 
     def muta_controlo(self, comprimento, debug=0):
         pos = random.randint(0, comprimento)
