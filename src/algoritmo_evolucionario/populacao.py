@@ -1,5 +1,5 @@
-import heapq
 import random
+import numpy as np
 from . import config
 from .individuo import Individuo
 
@@ -49,7 +49,17 @@ class Populacao:
 
     def selecciona(self, a_eliminar, debug=0):
         vivos = [n for n in range(self.dimensao) if self.individuos[n].estado == 'V']
-        piores = heapq.nsmallest(a_eliminar, vivos, key=lambda n: self.individuos[n].aptidao)
+        n_vivos = len(vivos)
+        if n_vivos <= a_eliminar:
+            for n in vivos:
+                self.individuos[n].estado = 'M'
+            return
+        ranked = sorted(vivos, key=lambda n: self.individuos[n].aptidao)
+        # rank 0 = worst gets weight n_vivos^p; rank n_vivos-1 = best gets weight 1
+        p = config.SELECTION_PRESSURE
+        weights = np.array([(n_vivos - i) ** p for i in range(n_vivos)], dtype=float)
+        weights /= weights.sum()
+        piores = np.random.choice(ranked, size=a_eliminar, replace=False, p=weights)
         for n in piores:
             self.individuos[n].estado = 'M'
 
