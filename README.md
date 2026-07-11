@@ -12,7 +12,9 @@ Given a 2D domain with material properties (matrix `E`), the algorithm finds nod
 
 1. **Generate** — dead individuals are replaced via crossover between two live parents; Kx and Ky regions are crossed over independently at a freely chosen cut point (spatial locality is preserved by the Hilbert ordering, not the crossover operator). All individuals may then mutate their chromosome values or their self-adaptive step sizes.
 2. **Evaluate** — fitness is computed for every individual in parallel using `ProcessPoolExecutor`.
-3. **Select** — the 25 least-fit individuals are marked for replacement next generation.
+3. **Select** — the lowest-fitness individuals (20% of the population by default) are marked for replacement next generation.
+
+If the champion's fitness does not improve for `STAGNATION_WINDOW` consecutive generations, all step sizes are reset to `INITIAL_STEP`, allowing the population to escape local plateaus. The restart is reported on stdout.
 
 After 1 000 generations the champion's mesh is returned.
 
@@ -90,6 +92,8 @@ Default parameter values (`configs/default.py`):
 | `E_MATRIX` | `[[1.0]*n]*n` | Material property per cell — define explicitly for non-uniform cases |
 | `POPULATION` | 50 | Number of individuals |
 | `GENERATIONS` | 1 000 | EA iterations |
+| `SELECTION_RATE` | 0.2 | Fraction of population eliminated each generation |
+| `STAGNATION_WINDOW` | 100 | Generations without improvement before step-size restart |
 | `MUTATION_RATE` | 0.2 | Chromosome mutation probability per individual |
 | `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
 | `FOLD_PENALTY` | 1 000 | Weight on folded (negative-area) cells |

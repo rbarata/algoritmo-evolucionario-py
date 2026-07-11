@@ -18,8 +18,9 @@ Given an `n×n` grid of material properties `E[i][j]`, the algorithm finds node 
 1. Dead individuals replaced via crossover of two live parents (independent single-point cut for Kx and Ky regions; spatial locality preserved by Hilbert encoding).
 2. Chromosome mutation: random gene ± step-size value (rate 0.2).
 3. Step-size mutation: random step-size ×2 or ÷2 (rate 0.04) — self-adaptive ES.
-4. Worst 25 individuals marked dead (truncation selection via `heapq.nsmallest`).
+4. Worst `round(POPULATION * SELECTION_RATE)` individuals marked dead (truncation selection via `heapq.nsmallest`).
 5. Population evaluated in parallel using `ProcessPoolExecutor`.
+6. If champion fitness has not improved for `STAGNATION_WINDOW` consecutive generations, all `controlo` vectors are reset to `INITIAL_STEP` (stagnation restart — see `Sonda.reiniciar`).
 
 ---
 
@@ -132,7 +133,7 @@ Individual `estado` values:
 - `'M'` — Morto (marked for replacement next `refresh`)
 - `'N'` — recém-Nascido (just born via crossover; promoted to `'V'` at end of `refresh`)
 
-`selecciona(a_eliminar)`: uses `heapq.nsmallest` to find and mark the `a_eliminar` lowest-fitness live individuals as `'M'` in O(n + k log n). Called with `a_eliminar = populacao // 2 = 25`.
+`selecciona(a_eliminar)`: uses `heapq.nsmallest` to find and mark the `a_eliminar` lowest-fitness live individuals as `'M'` in O(n + k log n). `a_eliminar = round(POPULATION * SELECTION_RATE)` (default 0.2 → 10 of 50).
 
 ---
 
@@ -174,6 +175,8 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 | `E_MATRIX` | `[[1.0]*n]*n` (uniform) |
 | `POPULATION` | 50 |
 | `GENERATIONS` | 1000 |
+| `SELECTION_RATE` | 0.2 |
+| `STAGNATION_WINDOW` | 100 |
 | `MUTATION_RATE` | 0.2 |
 | `CONTROL_DIVISOR` | 5 |
 | `DIVERGE_RATE` | 0.5 |
@@ -197,3 +200,5 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 - The last column of `Kx` (`j=n`) and last row of `Ky` (`i=n`) are always zero and are never referenced by the PDE stencil — they are excluded from the chromosome to avoid wasted neutral genes.
 - Chromosome genes are reordered by a Hilbert space-filling curve (`hilbert.py`) so that physically adjacent cells in the 2D mesh are also adjacent in the chromosome. This means a crossover cut at any point produces two spatially compact offspring regions, preserving spatial building blocks without needing row-aligned cuts.
 - Crossover uses independent single-point cuts for the `Kx` and `Ky` regions (`Cromossoma.cruza` takes `kx_size` only; `kx_size = len(modelo) // 2` since both halves are always equal). This prevents mixing the two matrices across parents while letting the Hilbert ordering handle within-matrix locality.
+- Selection rate is configurable (`SELECTION_RATE`, default 0.2) rather than the original hardcoded 50%. Lower selection pressure keeps more diversity in the population.
+- Stagnation restart (`Sonda.reiniciar`): if the champion fitness does not improve for `STAGNATION_WINDOW` generations, all `controlo` step sizes are reset to `INITIAL_STEP`. This recovers from collapsed step sizes, which are the primary cause of premature convergence in self-adaptive ES.
