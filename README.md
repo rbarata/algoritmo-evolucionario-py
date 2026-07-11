@@ -96,6 +96,8 @@ Default parameter values (`configs/default.py`):
 | `STAGNATION_WINDOW` | 100 | Generations without improvement before step-size restart |
 | `MUTATION_RATE` | 0.2 | Chromosome mutation probability per individual |
 | `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
+| `INITIAL_STEP` | 1.0 | Starting step size for all `controlo` values |
+| `MIN_STEP` | 0.05 | Floor on step sizes — halving never goes below this |
 | `FOLD_PENALTY` | 1 000 | Weight on folded (negative-area) cells |
 | `MAX_WORKERS` | 8 | Max parallel evaluation workers |
 | Crossover | — | Independent single-point cut for `Kx` and `Ky` regions |
