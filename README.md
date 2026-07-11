@@ -10,7 +10,7 @@ Given a 2D domain with material properties (matrix `E`), the algorithm finds nod
 
 **How the EA works:** a population of 50 individuals each encodes a candidate pair of diffusivity matrices `(Kx, Ky)` as a flat vector (the chromosome). The matrices are log-encoded — each gene stores `log(Kx)` or `log(Ky)` — so any mutation value maps to a valid positive diffusivity. Boundary columns/rows that are always zero are excluded from the chromosome. Each generation:
 
-1. **Generate** — dead individuals are replaced via crossover between two live parents. Parents are chosen with probability proportional to `(fitness − min_fitness + ε)^SELECTION_PRESSURE`, so fitter individuals produce more offspring. Kx and Ky regions are crossed over independently at a freely chosen cut point (spatial locality preserved by the Hilbert ordering). All individuals may then mutate their chromosome values or their self-adaptive step sizes.
+1. **Generate** — dead individuals are replaced via crossover between two live parents. Parents are chosen with probability proportional to `(fitness − min_fitness + ε)^SELECTION_PRESSURE`, so fitter individuals produce more offspring. Kx and Ky regions are crossed over independently at a freely chosen cut point (spatial locality preserved by the Hilbert ordering). All individuals may then mutate their chromosome values (step = `uniform(0, MUTATION_FACTOR) × controlo[pos]`) or their self-adaptive step sizes.
 2. **Evaluate** — fitness is computed for every individual in parallel using `ProcessPoolExecutor`.
 3. **Select** — `SELECTION_RATE` of the population is marked for replacement by fitness-gap-based probabilistic selection: death weight = `(max_fitness − fitness + ε)^SELECTION_PRESSURE`. This means an individual vastly below the best is much more likely to die than one just slightly below it; the gap from the best determines elimination probability, not just ordinal rank.
 
@@ -99,6 +99,7 @@ Default parameter values (`configs/default.py`):
 | `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
 | `INITIAL_STEP` | 1.0 | Starting step size for all `controlo` values |
 | `MIN_STEP` | 0.05 | Floor on step sizes — halving never goes below this |
+| `MUTATION_FACTOR` | 2 | Upper bound of the uniform random scaling on each mutation — actual step = `uniform(0, MUTATION_FACTOR) × controlo[pos]`; expected step equals `controlo[pos]` |
 | `FOLD_PENALTY` | 1 000 | Weight on folded (negative-area) cells |
 | `MAX_WORKERS` | 8 | Max parallel evaluation workers |
 | Crossover | — | Independent single-point cut for `Kx` and `Ky` regions |

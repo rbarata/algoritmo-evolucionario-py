@@ -120,7 +120,7 @@ Ky[i][j]:  0           if i == n
 
 ## `Cromossoma` — mutation mechanics
 
-- `muta_cromossoma(comprimento)`: picks random index `pos ∈ [0, comprimento]`; adds or subtracts `controlo[pos]`. No clamping — all values are valid in log-space.
+- `muta_cromossoma(comprimento)`: picks random index `pos ∈ [0, comprimento]`; adds or subtracts `uniform(0, MUTATION_FACTOR) × controlo[pos]`. The random factor means `controlo[pos]` sets the scale of the step rather than a fixed displacement — each mutation is anywhere from a near-zero nudge to a `MUTATION_FACTOR`-sized jump. No clamping — all values are valid in log-space.
 - `muta_controlo(comprimento)`: picks random index; doubles or halves `controlo[pos]`. Halving is floored at `config.MIN_STEP` (default 0.05) to prevent step sizes from collapsing to negligible values.
 - `cruza(pai1, pai2, kx_size)`: independent single-point crossover. Picks a free cut within the Kx region and a separate free cut within the Ky region; copies chromosome AND controlo vectors. Spatial locality is handled by the Hilbert encoding, not the crossover operator.
 
@@ -187,6 +187,7 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 | `MIN_STEP` | 0.05 |
 | `STEP_FACTOR` | 2 |
 | `MUTATION_BIAS` | 0.5 |
+| `MUTATION_FACTOR` | 2 |
 | `FOLD_PENALTY` | 1000.0 |
 | `MAX_WORKERS` | 8 |
 
