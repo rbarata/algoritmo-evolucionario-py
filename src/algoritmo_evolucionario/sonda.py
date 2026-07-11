@@ -54,8 +54,8 @@ class Sonda:
         else:
             aptidoes = [avalia_fn(c, parm, 0) for c in chromosomes]
 
-        max_apt, nmax = 0.0, -1
-        min_apt, nmin = 1e10, -1
+        max_apt, nmax = 0.0, 0
+        min_apt, nmin = 1e10, 0
         for n, apt in enumerate(aptidoes):
             pop.individuos[n].aptidao = apt
             if apt < min_apt:
@@ -69,7 +69,8 @@ class Sonda:
         pop = self.populacao
         for individuo in pop.individuos.values():
             individuo.cromossoma.controlo = [
-                v * config.STEP_FACTOR for v in individuo.cromossoma.controlo
+                min(config.INITIAL_STEP, v * config.STEP_FACTOR)
+                for v in individuo.cromossoma.controlo
             ]
 
     def reporta(self, iteracao, debug=0):
