@@ -32,7 +32,7 @@ def automato(populacao, modelo, avalia, reporta, iteracoes, parm, debug=0):
             stagnation_count += 1
 
         if stagnation_count >= config.STAGNATION_WINDOW:
-            print(f"#reinício na iteração {n}: {config.STAGNATION_WINDOW} gerações sem melhoria")
+            print(f"#boost de step sizes na iteração {n}: {config.STAGNATION_WINDOW} gerações sem melhoria")
             sonda.reiniciar()
             stagnation_count = 0
 

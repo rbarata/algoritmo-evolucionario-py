@@ -68,7 +68,9 @@ class Sonda:
     def reiniciar(self):
         pop = self.populacao
         for individuo in pop.individuos.values():
-            individuo.cromossoma.controlo = [config.INITIAL_STEP] * (pop.comprimento + 1)
+            individuo.cromossoma.controlo = [
+                v * config.STEP_FACTOR for v in individuo.cromossoma.controlo
+            ]
 
     def reporta(self, iteracao, debug=0):
         pop     = self.populacao
