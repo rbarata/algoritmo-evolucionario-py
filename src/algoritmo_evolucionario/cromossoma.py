@@ -47,7 +47,7 @@ class Cromossoma:
         if random.random() > config.MUTATION_BIAS:
             self.controlo[pos] *= config.STEP_FACTOR
         else:
-            self.controlo[pos] /= config.STEP_FACTOR
+            self.controlo[pos] = max(config.MIN_STEP, self.controlo[pos] / config.STEP_FACTOR)
 
     def valor(self):
         return list(self.cromossoma)
