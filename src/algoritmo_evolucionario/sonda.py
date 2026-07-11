@@ -18,7 +18,7 @@ class Sonda:
         n_workers = min(os.cpu_count() or 1, config.MAX_WORKERS)
         self._executor = ProcessPoolExecutor(max_workers=n_workers) if n_workers > 1 else None
 
-        self.populacao = Populacao(dimensao, modelo, parm['n'], debug - 1)
+        self.populacao = Populacao(dimensao, modelo, debug - 1)
         for n in range(dimensao):
             if debug > 0:
                 print(f"#A mutar - passagem {n}")

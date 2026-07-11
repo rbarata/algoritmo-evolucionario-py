@@ -15,11 +15,12 @@ class Cromossoma:
         print("#" + "\t" * tab + f"Controlo: {self.controlo}")
 
     @staticmethod
-    def cruza(pai1, pai2, kx_size, n, debug=0):
-        # Independent row-aligned crossover for Kx and Ky regions.
-        # Kx: (n+1) rows of width n; Ky: n rows of width (n+1).
-        cx = random.randint(0, n + 1) * n          # cut within Kx region
-        cy = random.randint(0, n) * (n + 1)        # cut within Ky region
+    def cruza(pai1, pai2, kx_size, debug=0):
+        # Independent single-point crossover for Kx and Ky regions.
+        # Spatial locality is preserved by the Hilbert encoding, so free cuts suffice.
+        total = len(pai1.cromossoma)
+        cx = random.randint(0, kx_size)
+        cy = random.randint(0, total - kx_size)
         cromossoma = (pai1.cromossoma[:cx]
                       + pai2.cromossoma[cx:kx_size]
                       + pai1.cromossoma[kx_size:kx_size + cy]

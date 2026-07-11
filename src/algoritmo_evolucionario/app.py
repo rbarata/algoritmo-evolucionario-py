@@ -4,25 +4,34 @@ import numpy as np
 
 from .automato import automato
 from . import config
+from .hilbert import hilbert_order
 from .malha import calcular_KK, calcular_XY, calcular_soma
 from .util import print_title
 
 
 def codifica(n, Kx, Ky, debug=0):
-    # Strip the always-zero last column of Kx and last row of Ky before encoding.
-    # Log-encode so any mutation value maps to a valid positive diffusivity.
+    # Strip neutral boundary genes, log-encode, then reorder by Hilbert curve
+    # so spatially close cells are adjacent in the chromosome.
     kx = np.log(np.asarray(Kx, dtype=float)[:, :n])   # (n+1, n)
     ky = np.log(np.asarray(Ky, dtype=float)[:n, :])   # (n, n+1)
-    return list(np.concatenate([kx.ravel(), ky.ravel()]))
+    kx_idx = hilbert_order(n + 1, n)
+    ky_idx = hilbert_order(n, n + 1)
+    kx_i, kx_j = zip(*kx_idx)
+    ky_i, ky_j = zip(*ky_idx)
+    return list(kx[kx_i, kx_j]) + list(ky[ky_i, ky_j])
 
 
 def descodifica(n, codificado, debug=0):
-    kx_size = (n + 1) * n
+    kx_idx = hilbert_order(n + 1, n)
+    ky_idx = hilbert_order(n, n + 1)
+    kx_size = len(kx_idx)
     arr = np.asarray(codificado)
     Kx = np.zeros((n + 1, n + 1))
     Ky = np.zeros((n + 1, n + 1))
-    Kx[:, :n] = np.exp(arr[:kx_size].reshape(n + 1, n))
-    Ky[:n, :] = np.exp(arr[kx_size:].reshape(n, n + 1))
+    kx_i, kx_j = zip(*kx_idx)
+    ky_i, ky_j = zip(*ky_idx)
+    Kx[kx_i, kx_j] = np.exp(arr[:kx_size])
+    Ky[ky_i, ky_j] = np.exp(arr[kx_size:])
     return Kx, Ky
 
 
