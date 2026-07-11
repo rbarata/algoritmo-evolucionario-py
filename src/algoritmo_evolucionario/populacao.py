@@ -54,12 +54,12 @@ class Populacao:
             for n in vivos:
                 self.individuos[n].estado = 'M'
             return
-        ranked = sorted(vivos, key=lambda n: self.individuos[n].aptidao)
-        # rank 0 = worst gets weight n_vivos^p; rank n_vivos-1 = best gets weight 1
-        p = config.SELECTION_PRESSURE
-        weights = np.array([(n_vivos - i) ** p for i in range(n_vivos)], dtype=float)
+        aptidoes = np.array([self.individuos[n].aptidao for n in vivos])
+        max_apt = aptidoes.max()
+        # death weight: gap from best raised to SELECTION_PRESSURE; ε keeps best weight > 0
+        weights = (max_apt - aptidoes + 1e-6) ** config.SELECTION_PRESSURE
         weights /= weights.sum()
-        piores = np.random.choice(ranked, size=a_eliminar, replace=False, p=weights)
+        piores = np.random.choice(vivos, size=a_eliminar, replace=False, p=weights)
         for n in piores:
             self.individuos[n].estado = 'M'
 
