@@ -10,12 +10,12 @@ Given an `n×n` grid of material properties `E[i][j]`, the algorithm finds node 
 
 **Fitness:** `1 / (1 + soma)`, where `soma` is the sum over all quadrilateral cells of `areaS(cell) * E[i][j]`. Folded cells (negative signed area) are penalised ×1000. A perfect uniform mesh on uniform `E=1` gives fitness = 1.
 
-**Chromosome encoding:** the matrices `Kx` and `Ky` (diffusivity coefficients, each `(n+1)×(n+1)`) are flattened row-by-row and concatenated into a vector of length `2*(n+1)²`. These are decoded back to numpy arrays in `avalia` before the PDE solve.
+**Chromosome encoding:** the active slices `Kx[:, :n]` and `Ky[:n, :]` (neutral boundary genes excluded) are log-encoded and reordered by a Hilbert space-filling curve, then concatenated into a vector of length `2*n*(n+1)`. The Hilbert ordering ensures physically close cells are adjacent in the chromosome, so crossover cuts produce spatially compact offspring. Decoded back to numpy arrays in `avalia` via `exp` and inverse permutation before the PDE solve.
 
 **Mesh solve:** given `Kx` and `Ky`, node positions are found by solving a diffusion PDE with Dirichlet boundary conditions (left/right edges fixed in X; top/bottom fixed in Y). The stencil is assembled as a sparse CSR matrix and solved exactly with `scipy.sparse.linalg.spsolve` (SuperLU). One solve for X, one for Y.
 
 **EA loop (configurable; defaults: 1000 generations, population 50):**
-1. Dead individuals replaced via crossover of two live parents (independent row-aligned cut for Kx and Ky regions).
+1. Dead individuals replaced via crossover of two live parents (independent single-point cut for Kx and Ky regions; spatial locality preserved by Hilbert encoding).
 2. Chromosome mutation: random gene ± step-size value (rate 0.2).
 3. Step-size mutation: random step-size ×2 or ÷2 (rate 0.04) — self-adaptive ES.
 4. Worst 25 individuals marked dead (truncation selection via `heapq.nsmallest`).
@@ -39,6 +39,7 @@ src/algoritmo_evolucionario/
     populacao.py    Populacao — holds dict of Individuo; refresh/diverge/selecciona
     individuo.py    Individuo — cromossoma + aptidao + estado ('V'/'M'/'N') + idade
     cromossoma.py   Cromossoma — [cromossoma_list, controlo_list]; cruza/muta_cromossoma/muta_controlo
+    hilbert.py      hilbert_order(rows, cols) — Hilbert curve traversal order for arbitrary grids (cached)
     malha.py        calcular_KK / calcular_XY / _build_coeffs / _assemble / calcular_soma (+ desvio variants)
     quadrilatero.py Quadrilatero(p00,p01,p10,p11) — area() unsigned, areaS() signed
     ponto.py        Ponto(x,y) — soma/subtrai/norma (static methods on class)
@@ -57,7 +58,7 @@ tests/__init__.py                            empty — no tests yet
 | `E` | `list[list[float]]` | `n×n` | material property per cell |
 | `Kx`, `Ky` | `np.ndarray` | `(n+1)×(n+1)` | interface diffusivities; last col/row always 0 |
 | `X`, `Y` | `np.ndarray` | `(n+1)×(n+1)` | mesh node positions (exact sparse solve) |
-| `cromossoma` | `list[float]` | `2*n*(n+1)` | log-encoded `Kx[:, :n]` then `Ky[:n, :]` (neutral boundary genes excluded) |
+| `cromossoma` | `list[float]` | `2*n*(n+1)` | log-encoded, Hilbert-ordered `Kx[:, :n]` then `Ky[:n, :]` (neutral boundary genes excluded) |
 | `controlo` | `list[float]` | same | per-gene mutation step sizes (start at 1.0) |
 
 Boundary conditions are handled internally in `calcular_XY`:
@@ -110,9 +111,9 @@ Ky[i][j]:  0           if i == n
 
 ## `app.py` — encode / decode
 
-`codifica(n, Kx, Ky)` strips the always-zero last column of `Kx` and last row of `Ky`, log-encodes the remaining values (`np.log`), concatenates them, and returns a Python `list` of length `2*n*(n+1)`.
+`codifica(n, Kx, Ky)` strips the always-zero last column of `Kx` and last row of `Ky`, log-encodes the remaining values (`np.log`), reorders them by `hilbert_order(n+1, n)` and `hilbert_order(n, n+1)` respectively, and returns a Python `list` of length `2*n*(n+1)`.
 
-`descodifica(n, codificado)` splits at `kx_size = (n+1)*n`, exp-decodes each part (`np.exp`), reshapes to `(n+1, n)` and `(n, n+1)`, then embeds into zero-initialised `(n+1)×(n+1)` arrays — restoring the zero boundary column and row.
+`descodifica(n, codificado)` applies the same Hilbert orderings to place values back into their correct `(i, j)` positions, exp-decodes (`np.exp`), and embeds into zero-initialised `(n+1)×(n+1)` arrays — restoring the zero boundary column and row. `kx_size = len(codificado) // 2` (both halves are always equal in length).
 
 ---
 
@@ -120,7 +121,7 @@ Ky[i][j]:  0           if i == n
 
 - `muta_cromossoma(comprimento)`: picks random index `pos ∈ [0, comprimento]`; adds or subtracts `controlo[pos]`. No clamping — all values are valid in log-space.
 - `muta_controlo(comprimento)`: picks random index; doubles or halves `controlo[pos]`.
-- `cruza(pai1, pai2, kx_size, n)`: independent row-aligned crossover. Picks a cut at a row boundary within the Kx region (`random.randint(0, n+1) * n`) and a separate cut within the Ky region (`random.randint(0, n) * (n+1)`); copies chromosome AND controlo vectors.
+- `cruza(pai1, pai2, kx_size)`: independent single-point crossover. Picks a free cut within the Kx region and a separate free cut within the Ky region; copies chromosome AND controlo vectors. Spatial locality is handled by the Hilbert encoding, not the crossover operator.
 
 ---
 
@@ -194,4 +195,5 @@ All tuneable parameters live in `src/algoritmo_evolucionario/configs/`. Each fil
 - `gauss_rand()`, `matriz.py` (Gaussian elimination, mat2vec, vec2mat), and `tdma.py` were deleted as dead or superseded code.
 - Chromosome encodes `log(Kx[:, :n])` and `log(Ky[:n, :])` rather than raw values. Log-space keeps all decoded diffusivities strictly positive without any clamping, and makes mutation multiplicative in the original scale.
 - The last column of `Kx` (`j=n`) and last row of `Ky` (`i=n`) are always zero and are never referenced by the PDE stencil — they are excluded from the chromosome to avoid wasted neutral genes.
-- Crossover uses independent row-aligned cut points for the `Kx` and `Ky` regions (`Cromossoma.cruza` takes `kx_size` and `n` instead of a single `comprimento`). This preserves 2D spatial coherence within each matrix and prevents mixing the two matrices across parents at unrelated positions.
+- Chromosome genes are reordered by a Hilbert space-filling curve (`hilbert.py`) so that physically adjacent cells in the 2D mesh are also adjacent in the chromosome. This means a crossover cut at any point produces two spatially compact offspring regions, preserving spatial building blocks without needing row-aligned cuts.
+- Crossover uses independent single-point cuts for the `Kx` and `Ky` regions (`Cromossoma.cruza` takes `kx_size` only; `kx_size = len(modelo) // 2` since both halves are always equal). This prevents mixing the two matrices across parents while letting the Hilbert ordering handle within-matrix locality.

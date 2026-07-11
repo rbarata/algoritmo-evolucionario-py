@@ -10,7 +10,7 @@ Given a 2D domain with material properties (matrix `E`), the algorithm finds nod
 
 **How the EA works:** a population of 50 individuals each encodes a candidate pair of diffusivity matrices `(Kx, Ky)` as a flat vector (the chromosome). The matrices are log-encoded — each gene stores `log(Kx)` or `log(Ky)` — so any mutation value maps to a valid positive diffusivity. Boundary columns/rows that are always zero are excluded from the chromosome. Each generation:
 
-1. **Generate** — dead individuals are replaced via crossover between two live parents; Kx and Ky regions are crossed over independently, each at a randomly chosen row boundary. All individuals may then mutate their chromosome values or their self-adaptive step sizes.
+1. **Generate** — dead individuals are replaced via crossover between two live parents; Kx and Ky regions are crossed over independently at a freely chosen cut point (spatial locality is preserved by the Hilbert ordering, not the crossover operator). All individuals may then mutate their chromosome values or their self-adaptive step sizes.
 2. **Evaluate** — fitness is computed for every individual in parallel using `ProcessPoolExecutor`.
 3. **Select** — the 25 least-fit individuals are marked for replacement next generation.
 
@@ -37,6 +37,7 @@ After 1 000 generations the champion's mesh is returned.
         ├── populacao.py             # population management
         ├── individuo.py             # individual: chromosome + fitness + state + age
         ├── cromossoma.py            # crossover, mutation, self-adaptive step sizes
+        ├── hilbert.py               # Hilbert curve ordering for chromosome encoding
         ├── malha.py                 # mesh solver: calcular_KK, calcular_XY, calcular_soma
         ├── quadrilatero.py          # quadrilateral geometry and signed area
         ├── ponto.py                 # 2D point
@@ -93,8 +94,8 @@ Default parameter values (`configs/default.py`):
 | `CONTROL_DIVISOR` | 5 | Step-size mutation rate = `MUTATION_RATE / CONTROL_DIVISOR` |
 | `FOLD_PENALTY` | 1 000 | Weight on folded (negative-area) cells |
 | `MAX_WORKERS` | 8 | Max parallel evaluation workers |
-| Crossover | — | Independent row-aligned cut for `Kx` and `Ky` regions |
-| Encoding | — | Log-encoded `Kx[:, :n]` then `Ky[:n, :]`; chromosome length `2·n·(n+1)` |
+| Crossover | — | Independent single-point cut for `Kx` and `Ky` regions |
+| Encoding | — | Log-encoded, Hilbert-curve-ordered `Kx[:, :n]` then `Ky[:n, :]`; length `2·n·(n+1)` |
 | Mesh solve | — | Exact sparse direct solve (SuperLU via scipy) |
 | Selection | — | `heapq.nsmallest` — O(n + k log n) |
 | Evaluation | — | Parallel — `ProcessPoolExecutor` |
