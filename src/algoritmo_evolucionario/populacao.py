@@ -34,6 +34,11 @@ class Populacao:
                     self.individuos[pai1], self.individuos[pai2],
                     self.kx_size, debug - 1
                 )
+                controlo = self.individuos[n].cromossoma.controlo
+                self.individuos[n].cromossoma.controlo = [
+                    max(config.MIN_STEP, v * config.BIRTH_DECAY)
+                    for v in controlo
+                ]
             if random.random() <= taxa_de_mutacao:
                 self.individuos[n].muta_cromossoma(self.comprimento, debug - 1)
             if random.random() <= taxa_de_mutacao / config.CONTROL_DIVISOR:
